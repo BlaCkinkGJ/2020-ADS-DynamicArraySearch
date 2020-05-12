@@ -1,23 +1,46 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "dynamic-array.h"
 
 int main(void)
 {
-        unsigned long bitmap_mask[BITMAP_SIZE];
-        dynamic_array_bitmap_init(bitmap_mask);
-        for (unsigned long i = 1; i <= NR_LINES /*NR_LINES*/; i++) {
-                dynamic_array_clear_bit(bitmap_mask, i - 1);
-                dynamic_array_set_bit(bitmap_mask, i);
-                for (int j = 0; j < BITMAP_SIZE; j++) {
-                        for (int k = 0; k < BITS_PER_BITMAP; k++) {
-                                printf("%d",
-                                       dynamic_array_test_bit(
-                                               bitmap_mask,
-                                               (j * BITS_PER_BITMAP + k)));
-                        }
-                        printf(" ");
-                }
-                printf("\n");
+        int ret = 0;
+        size_t nr_case = 0, i = 0;
+        struct dynamic_array *array = NULL;
+
+        FILE *fp = fopen("test.inp", "r");
+
+        array = dynamic_array_init();
+        if (array == NULL) {
+                goto exception;
         }
-        return 0;
+
+        pr_info("dynamic array initialize finished\n");
+
+        fscanf(fp, "%I64d", &nr_case);
+
+        for (i = 0; i < nr_case; i++) {
+                char command[256];
+                key_t key;
+                fscanf(fp, "%s %I64d", command, &key);
+                if (!strncmp(command, "INSERT", sizeof(command))) {
+                        struct item item = { .key = i };
+                        ret = dynamic_array_insert(array, item);
+                        if (ret) {
+                                goto exception;
+                        }
+                }
+                if (!strncmp(command, "SEARCH", sizeof(command))) {
+                        dynamic_array_search(array, i);
+                }
+        }
+        pr_info("insert/serach sequence finished\n");
+
+        dynamic_array_free(array);
+        pr_info("dynamic array free\n");
+
+exception:
+        fclose(fp);
+        return ret;
 }
