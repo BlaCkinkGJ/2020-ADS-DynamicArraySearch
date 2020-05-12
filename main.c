@@ -8,6 +8,7 @@ int main(void)
         int ret = 0;
         size_t nr_case = 0, i = 0;
         struct dynamic_array *array = NULL;
+        size_t err = 0, total = 0;
 
         FILE *fp = fopen("test.inp", "r");
 
@@ -25,17 +26,22 @@ int main(void)
                 key_t key;
                 fscanf(fp, "%s %I64d", command, &key);
                 if (!strncmp(command, "INSERT", sizeof(command))) {
-                        struct item item = { .key = i };
+                        struct item item = { .key = key };
                         ret = dynamic_array_insert(array, item);
                         if (ret) {
                                 goto exception;
                         }
                 }
                 if (!strncmp(command, "SEARCH", sizeof(command))) {
-                        dynamic_array_search(array, i);
+                        struct item *item = dynamic_array_search(array, key);
+                        if (item == NULL) {
+                                err++;
+                        }
+                        total++;
                 }
         }
-        pr_info("insert/serach sequence finished\n");
+        pr_info("insert/serach sequence finished (err: %.2f%%)\n",
+                (float)(err * 100.0 / total));
 
         dynamic_array_free(array);
         pr_info("dynamic array free\n");
