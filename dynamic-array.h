@@ -4,7 +4,18 @@
 #include <stdio.h>
 #include <time.h>
 
+#ifdef _WIN32
+#define SIZE_T_FORMAT "%I64d"
+#define KEY_FORMAT SIZE_T_FORMAT
 typedef size_t key_t;
+#endif
+
+#ifdef linux
+#define SIZE_T_FORMAT "%ld"
+#define KEY_FORMAT "%d"
+#include <sys/types.h> // for key_t
+#endif
+
 typedef unsigned long bitmap_t;
 
 #define BITS (8)

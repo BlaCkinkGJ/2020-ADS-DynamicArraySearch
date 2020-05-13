@@ -8,7 +8,8 @@ static int dynamic_array_line_alloc(struct dynamic_array *array,
 {
         struct line *line;
         if (line_index >= NR_LINES) {
-                pr_info("line index is over(%I64d/%d)", line_index, NR_LINES);
+                pr_info("line index is over(" SIZE_T_FORMAT "/%d)", line_index,
+                        NR_LINES);
                 return -EINVAL;
         }
 
@@ -29,7 +30,8 @@ static int dynamic_array_line_dealloc(struct dynamic_array *array,
 {
         struct line *line;
         if (line_index >= NR_LINES) {
-                pr_info("line index is over(%I64d/%d)", line_index, NR_LINES);
+                pr_info("line index is over(" SIZE_T_FORMAT "/%d)", line_index,
+                        NR_LINES);
                 return -EINVAL;
         }
 

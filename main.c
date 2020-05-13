@@ -19,12 +19,12 @@ int main(void)
 
         pr_info("dynamic array initialize finished\n");
 
-        fscanf(fp, "%I64d", &nr_case);
+        fscanf(fp, SIZE_T_FORMAT, &nr_case);
 
         for (i = 0; i < nr_case; i++) {
                 char command[256];
                 key_t key;
-                fscanf(fp, "%s %I64d", command, &key);
+                fscanf(fp, "%s " KEY_FORMAT, command, &key);
                 if (!strncmp(command, "INSERT", sizeof(command))) {
                         struct item item = { .key = key };
                         ret = dynamic_array_insert(array, item);
