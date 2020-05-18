@@ -1,8 +1,25 @@
+/**
+ * @file dynamic-array.c
+ * @author 오기준 (kijunking@pusan.ac.kr)
+ * @brief dynamic array의 세부 구현에 대해서 들어가있다.
+ * @version 0.1
+ * @date 2020-05-18
+ * 
+ * @copyright Copyright (c) 2020
+ * 
+ */
 #include "dynamic-array.h"
 #include <stdlib.h> // qsort 및 malloc을 위해서 존재
 #include <errno.h>
 #include <string.h>
 
+/**
+ * @brief dynamic array의 특정 인덱스에 해당하는 line을 할당을 받는다.
+ * 
+ * @param array dynamic array 구조체의 포인터이다.
+ * @param line_index 할당 받고자하는 line의 인덱스를 지칭한다.
+ * @return int 할당 성공 시에는 0, 아닌 시에는 -N의 값이 반환된다.
+ */
 static int dynamic_array_line_alloc(struct dynamic_array *array,
                                     size_t line_index)
 {
@@ -25,6 +42,13 @@ static int dynamic_array_line_alloc(struct dynamic_array *array,
         return 0;
 }
 
+/**
+ * @brief dynamic array의 특정 인덱스에 해당하는 line을 해제한다.
+ * 
+ * @param array dynamic array 구조체의 포인터를 지칭한다.
+ * @param line_index 해제 대상이 line의 인덱스를 지칭한다.
+ * @return int 해제 성공 시에는 0, 아닌 시에는 -N의 값이 반환된다.
+ */
 static int dynamic_array_line_dealloc(struct dynamic_array *array,
                                       size_t line_index)
 {
@@ -48,6 +72,13 @@ static int dynamic_array_line_dealloc(struct dynamic_array *array,
         return 0;
 }
 
+/**
+ * @brief dynamic array에 대한 비교를 수행하는 함수
+ * 
+ * @param left index가 앞서 있는 내용
+ * @param right index가 뒤쳐지는 내용
+ * @return int 1: left가 앞서 있음, -1: right가 앞서 있음, 0: 동등함 
+ */
 static int dynamic_array_compare(const void *left, const void *right)
 {
         struct item *item1 = (struct item *)left;
@@ -64,6 +95,13 @@ static int dynamic_array_compare(const void *left, const void *right)
         return 0;
 }
 
+/**
+ * @brief dynamic array에 값을 삽입하도록 한다.
+ * 
+ * @param array dynamic array에 대한 포인터를 지칭한다.
+ * @param item 삽입하고자 하는 데이터를 지칭한다.
+ * @return int 
+ */
 int dynamic_array_insert(struct dynamic_array *array, const struct item item)
 {
         int ret;
@@ -108,6 +146,13 @@ exception:
         return ret;
 }
 
+/**
+ * @brief dynamic array의 탐색 과정에서 binary search를 수행하는 부분
+ * 
+ * @param line 탐색을 수행할 line
+ * @param key 탐색의 대상이 되는 key
+ * @return struct item* 탐색 결과 위치. 못 찾은 경우 NULL 반환
+ */
 static struct item *__dynamic_array_search(struct line *line, key_t key)
 {
         struct item *item = NULL;
@@ -130,6 +175,13 @@ static struct item *__dynamic_array_search(struct line *line, key_t key)
         return NULL;
 }
 
+/**
+ * @brief dynamic array에서 특정 값을 찾도록 한다.
+ * 
+ * @param array dynamic array의 포인터
+ * @param key 찾고자하는 키 값
+ * @return struct item* key에 해당하는 위치를 반환한다. 못 찾은 경우 NULL 반환 
+ */
 struct item *dynamic_array_search(struct dynamic_array *array, key_t key)
 {
         size_t i;
@@ -149,6 +201,11 @@ ret:
         return item;
 }
 
+/**
+ * @brief dynamic array를 초기화 합니다.
+ * 
+ * @return struct dynamic_array* 초기화된 dynamic array가 반환된다.
+ */
 struct dynamic_array *dynamic_array_init()
 {
         struct dynamic_array *array;
@@ -168,6 +225,11 @@ struct dynamic_array *dynamic_array_init()
         return array;
 }
 
+/**
+ * @brief dynamic array를 해제한다.
+ * 
+ * @param array 해제하고자 하는 dynamic array
+ */
 void dynamic_array_free(struct dynamic_array *array)
 {
         size_t line_index;
