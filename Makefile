@@ -1,7 +1,7 @@
 CC=
-CFLAGS=-g -Wall -Werror
+CFLAGS=-Wall -Werror #-pg -g 
 # LDFLAGS=
-# LDLIBS=
+LDLIBS=
 SRCS=main.c dynamic-array.c
 OBJS=main.o dynamic-array.o
 RM=
@@ -15,6 +15,7 @@ else
 	CC=gcc
     RM=rm
 	TARGET=a.out
+	LDLIBS=-lm
 endif
 
 all: $(TARGET)
@@ -24,4 +25,4 @@ clean:
 	$(RM) $(TARGET)
 
 $(TARGET): $(OBJS)
-	$(CC) -o $@ $(OBJS)
+	$(CC) -o $@ $(OBJS) $(LDLIBS)
