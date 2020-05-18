@@ -3,25 +3,24 @@
 #include <string.h>
 #include "dynamic-array.h"
 
-#define NR_LINES (1000)
-
 int main(void)
 {
         int ret = 0;
         size_t nr_case = 0, i = 0;
         struct dynamic_array *array = NULL;
-        size_t err = 0, total = 0;
+        size_t err = 0, total = 0, array_size = 0;
 
         FILE *fp = fopen("test.inp", "r");
 
-        array = dynamic_array_init(NR_LINES);
+        fscanf(fp, SIZE_T_FORMAT, &nr_case);
+
+        array_size = dynamic_array_get_size(nr_case);
+        array = dynamic_array_init(array_size);
         if (array == NULL) {
                 goto exception;
         }
 
         pr_info("dynamic array initialize finished\n");
-
-        fscanf(fp, SIZE_T_FORMAT, &nr_case);
 
         for (i = 0; i < nr_case; i++) {
                 char command[256];

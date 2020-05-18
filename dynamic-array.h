@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <math.h>
 
 #ifdef _WIN32
 #define SIZE_T_FORMAT "%I64d"
@@ -34,6 +35,9 @@ typedef unsigned long bitmap_t;
 #define BITMAP_SIZE(nr_lines) (((nr_lines) / BITS_PER_BITMAP) + 1)
 
 #define INDEX_EMPTY ((size_t)(~0UL))
+
+#define FREE_DISABLE 0
+#define FREE_ENABLE 1
 
 /**
  * @brief debug용 출력 함수
@@ -217,6 +221,11 @@ static inline size_t dynamic_array_find_first_bit(bitmap_t *bitmap,
         }
 
         return INDEX_EMPTY;
+}
+
+static inline size_t dynamic_array_get_size(const size_t nitems)
+{
+        return (log2(nitems + 1) + 1);
 }
 
 #endif

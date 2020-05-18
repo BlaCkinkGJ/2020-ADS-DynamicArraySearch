@@ -32,10 +32,13 @@ static int dynamic_array_line_alloc(struct dynamic_array *array,
         }
 
         line = &array->lines[line_index];
-        line->items = (struct item *)calloc(line->size, sizeof(struct item));
-        if (line->items == NULL) {
-                pr_info("Memory allocation failed\n");
-                return -ENOMEM;
+        if (!line->items) {
+                line->items =
+                        (struct item *)calloc(line->size, sizeof(struct item));
+                if (line->items == NULL) {
+                        pr_info("Memory allocation failed\n");
+                        return -ENOMEM;
+                }
         }
 
         dynamic_array_set_bit(array->bitmap, line_index);
@@ -48,10 +51,11 @@ static int dynamic_array_line_alloc(struct dynamic_array *array,
  * 
  * @param array dynamic array 구조체의 포인터를 지칭한다.
  * @param line_index 해제 대상이 line의 인덱스를 지칭한다.
+ * @param flags FREE를 할 지 안 할지를 선택을 하는 플래그이다.
  * @return int 해제 성공 시에는 0, 아닌 시에는 -N의 값이 반환된다.
  */
-static int dynamic_array_line_dealloc(struct dynamic_array *array,
-                                      size_t line_index)
+static int __dynamic_array_line_dealloc(struct dynamic_array *array,
+                                        size_t line_index, int flags)
 {
         struct line *line;
         if (line_index >= array->nr_lines) {
@@ -62,7 +66,7 @@ static int dynamic_array_line_dealloc(struct dynamic_array *array,
         }
 
         line = &array->lines[line_index];
-        if (line->items != NULL) {
+        if (flags == FREE_ENABLE && line->items != NULL) {
                 free(line->items);
                 line->items = NULL;
         }
@@ -72,6 +76,21 @@ static int dynamic_array_line_dealloc(struct dynamic_array *array,
         dynamic_array_clear_bit(array->bitmap, line_index);
 
         return 0;
+}
+
+/**
+ * @brief dynamic array의 특정 인덱스에 해당하는 line을 해제한다.
+ * 
+ * @param array dynamic array 구조체의 포인터를 지칭한다.
+ * @param line_index 해제 대상이 line의 인덱스를 지칭한다.
+ * @return int 해제 성공 시에는 0, 아닌 시에는 -N의 값이 반환된다.
+ * 
+ * @warning 이 함수를 free를 사용해야 하는 곳에서 사용하지 말 것.
+ */
+static int dynamic_array_line_dealloc(struct dynamic_array *array,
+                                      size_t line_index)
+{
+        return __dynamic_array_line_dealloc(array, line_index, FREE_DISABLE);
 }
 
 /**
@@ -263,7 +282,8 @@ void dynamic_array_free(struct dynamic_array **_array)
         if (array->lines) {
                 for (line_index = 0; line_index < array->nr_lines;
                      line_index++) {
-                        dynamic_array_line_dealloc(array, line_index);
+                        __dynamic_array_line_dealloc(array, line_index,
+                                                     FREE_ENABLE);
                 } // end of for
                 free(array->lines);
                 array->lines = NULL;
