@@ -24,9 +24,10 @@ static int dynamic_array_line_alloc(struct dynamic_array *array,
                                     size_t line_index)
 {
         struct line *line;
-        if (line_index >= NR_LINES) {
-                pr_info("line index is over(" SIZE_T_FORMAT "/%d)", line_index,
-                        NR_LINES);
+        if (line_index >= array->nr_lines) {
+                pr_info("line index is over(" SIZE_T_FORMAT "/" SIZE_T_FORMAT
+                        ")",
+                        line_index, array->nr_lines);
                 return -EINVAL;
         }
 
@@ -53,9 +54,10 @@ static int dynamic_array_line_dealloc(struct dynamic_array *array,
                                       size_t line_index)
 {
         struct line *line;
-        if (line_index >= NR_LINES) {
-                pr_info("line index is over(" SIZE_T_FORMAT "/%d)", line_index,
-                        NR_LINES);
+        if (line_index >= array->nr_lines) {
+                pr_info("line index is over(" SIZE_T_FORMAT "/" SIZE_T_FORMAT
+                        ")",
+                        line_index, array->nr_lines);
                 return -EINVAL;
         }
 
@@ -112,11 +114,12 @@ int dynamic_array_insert(struct dynamic_array *array, const struct item item)
 
         next_item_pos = 0;
 
-        next_pos = dynamic_array_find_first_zero_bit(array->bitmap);
+        next_pos = dynamic_array_find_first_zero_bit(array->bitmap,
+                                                     array->nr_lines);
 
         ret = dynamic_array_line_alloc(array, next_pos);
         if (ret) {
-                goto exception;
+                goto ret;
         }
 
         next_line = &array->lines[next_pos];
@@ -142,7 +145,7 @@ int dynamic_array_insert(struct dynamic_array *array, const struct item item)
         if (next_pos + 1 > array->size) {
                 array->size = next_pos + 1;
         }
-exception:
+ret:
         return ret;
 }
 
@@ -206,35 +209,70 @@ ret:
  * 
  * @return struct dynamic_array* 초기화된 dynamic array가 반환된다.
  */
-struct dynamic_array *dynamic_array_init()
+struct dynamic_array *dynamic_array_init(const size_t nr_lines)
 {
         struct dynamic_array *array;
         size_t line_index;
+
         array = (struct dynamic_array *)malloc(sizeof(struct dynamic_array));
-        if (array == NULL) {
+        if (!array) {
                 pr_info("Memory allocation failed\n");
-                return NULL;
+                goto exception;
         }
+        array->nr_lines = nr_lines;
         array->size = 0;
-        dynamic_array_bitmap_init(array->bitmap);
-        for (line_index = 0; line_index < NR_LINES; line_index++) {
+        array->bitmap = dynamic_array_bitmap_init(nr_lines);
+        if (!array->bitmap) {
+                pr_info("Bitmap allocation failed\n");
+                goto exception;
+        }
+
+        array->lines = (struct line *)malloc(sizeof(struct line) * nr_lines);
+        if (!array->lines) {
+                pr_info("Line allocation failed\n");
+                goto exception;
+        }
+
+        for (line_index = 0; line_index < array->nr_lines; line_index++) {
                 struct line *line = &array->lines[line_index];
                 line->size = (1 << line_index);
                 line->items = NULL;
         }
         return array;
+
+exception:
+        dynamic_array_free(&array);
+        return NULL;
 }
 
 /**
  * @brief dynamic array를 해제한다.
  * 
  * @param array 해제하고자 하는 dynamic array
+ * @warning array 포인터 값이 변경되므로 주의해야 한다.
  */
-void dynamic_array_free(struct dynamic_array *array)
+void dynamic_array_free(struct dynamic_array **_array)
 {
+        struct dynamic_array *array = *_array;
         size_t line_index;
-        for (line_index = 0; line_index < NR_LINES; line_index++) {
-                dynamic_array_line_dealloc(array, line_index);
-        } // end of for
+        if (!array) {
+                pr_info("Nothing to do in free sequence\n");
+                return;
+        }
+
+        if (array->lines) {
+                for (line_index = 0; line_index < array->nr_lines;
+                     line_index++) {
+                        dynamic_array_line_dealloc(array, line_index);
+                } // end of for
+                free(array->lines);
+                array->lines = NULL;
+        } // array->lines free
+
+        if (array->bitmap) {
+                dynamic_array_bitmap_free(&array->bitmap);
+        } // array->bitmap free
+
         free(array);
+        *_array = NULL;
 }

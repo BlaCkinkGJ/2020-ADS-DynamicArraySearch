@@ -3,6 +3,8 @@
 #include <string.h>
 #include "dynamic-array.h"
 
+#define NR_LINES (1000)
+
 int main(void)
 {
         int ret = 0;
@@ -12,7 +14,7 @@ int main(void)
 
         FILE *fp = fopen("test.inp", "r");
 
-        array = dynamic_array_init();
+        array = dynamic_array_init(NR_LINES);
         if (array == NULL) {
                 goto exception;
         }
@@ -43,7 +45,7 @@ int main(void)
         pr_info("insert/serach sequence finished (err: %.2f%%)\n",
                 (float)(err * 100.0 / total));
 
-        dynamic_array_free(array);
+        dynamic_array_free(&array);
         pr_info("dynamic array free\n");
 
 exception:

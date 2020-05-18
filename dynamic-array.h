@@ -12,6 +12,7 @@
 #define _DYNAMIC_ARRAY_H
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 
 #ifdef _WIN32
@@ -29,9 +30,8 @@ typedef size_t key_t;
 typedef unsigned long bitmap_t;
 
 #define BITS (8)
-#define NR_LINES (1000)
 #define BITS_PER_BITMAP (sizeof(bitmap_t) * BITS)
-#define BITMAP_SIZE ((NR_LINES / BITS_PER_BITMAP) + 1)
+#define BITMAP_SIZE(nr_lines) (((nr_lines) / BITS_PER_BITMAP) + 1)
 
 #define INDEX_EMPTY ((size_t)(~0UL))
 
@@ -49,13 +49,13 @@ typedef unsigned long bitmap_t;
  * 
  */
 #define dynamic_array_set_bit(bitmap, index)                                   \
-        (bitmap[(bitmap_t)((index) / BITS_PER_BITMAP)] |=                      \
+        ((bitmap)[(bitmap_t)((index) / BITS_PER_BITMAP)] |=                    \
          (1 << ((index) % BITS_PER_BITMAP)))
 #define dynamic_array_clear_bit(bitmap, index)                                 \
-        (bitmap[(bitmap_t)((index) / BITS_PER_BITMAP)] &=                      \
+        ((bitmap)[(bitmap_t)((index) / BITS_PER_BITMAP)] &=                    \
          ~(1 << ((index) % BITS_PER_BITMAP)))
 #define dynamic_array_test_bit(bitmap, index)                                  \
-        ((bitmap[(bitmap_t)((index) / BITS_PER_BITMAP)] &                      \
+        (((bitmap)[(bitmap_t)((index) / BITS_PER_BITMAP)] &                    \
           (1 << ((index) % BITS_PER_BITMAP))) != 0)
 
 /**
@@ -83,26 +83,47 @@ struct line {
  * 
  */
 struct dynamic_array {
+        size_t nr_lines; /**< dynamic array의 line의 갯수를 지칭한다. */
         size_t size; /**< dynamic array의 현재 크기를 지칭한다. */
-        bitmap_t bitmap[BITMAP_SIZE]; /**< 값이 있는 위치 정보를 가지는 비트맵 */
-        struct line lines[NR_LINES]; /**< 라인 구조체 */
+        bitmap_t *bitmap; /**< 값이 있는 위치 정보를 가지는 비트맵 */
+        struct line *lines; /**< 라인 구조체 */
 };
 
-struct dynamic_array *dynamic_array_init();
+struct dynamic_array *dynamic_array_init(const size_t nr_lines);
 struct item *dynamic_array_search(struct dynamic_array *array, key_t key);
 int dynamic_array_insert(struct dynamic_array *array, const struct item item);
-void dynamic_array_free(struct dynamic_array *array);
+void dynamic_array_free(struct dynamic_array **_array);
 
 /**
  * @brief dynamic array의 비트맵을 초기화 한다.
  * 
  * @param bitmap 초기화하려고 하는 비트맵의 포인터를 지칭한다.
+ * @param nr_lines struct dynamic_array의 nr_lines 값
+ * @return bitmap_t* 초기화된 비트맵
  */
-static inline void dynamic_array_bitmap_init(bitmap_t *bitmap)
+static inline bitmap_t *dynamic_array_bitmap_init(const size_t nr_lines)
 {
-        int i;
-        for (i = 0; i < BITMAP_SIZE; i++) {
-                bitmap[i] &= 0x0;
+        bitmap_t *bitmap = NULL;
+        bitmap = (bitmap_t *)calloc(BITMAP_SIZE(nr_lines), sizeof(bitmap_t));
+        if (!bitmap) {
+                return NULL;
+        }
+
+        return bitmap;
+}
+
+/**
+ * @brief dynamic array에 있는 bitmap의 할당을 해제한다.
+ * 
+ * @param bitmap 할당이 되어 있는 비트맵
+ * @warning 내부 포인터 값이 변경되니 주의해야 한다.
+ */
+static inline void dynamic_array_bitmap_free(bitmap_t **_bitmap)
+{
+        bitmap_t *bitmap = *_bitmap;
+        if (bitmap) {
+                free(bitmap);
+                *_bitmap = NULL;
         }
 }
 
@@ -135,12 +156,14 @@ static inline size_t __dynamic_array_find_first_zero_bit(bitmap_t *bitmap,
  * @brief dynamic array의 bitmap에서 최초로 0이 나오는 비트를 반환한다.
  * 
  * @param bitmap 찾고자 하는 비트맵
+ * @param nr_lines struct dynamic_array의 nr_lines 값
  * @return size_t 비트맵의 위치. 못 찾은 경우 INDEX_EMPTY가 반환된다.
  */
-static inline size_t dynamic_array_find_first_zero_bit(bitmap_t *bitmap)
+static inline size_t dynamic_array_find_first_zero_bit(bitmap_t *bitmap,
+                                                       const size_t nr_lines)
 {
         size_t i, pos;
-        for (i = 0; i < BITMAP_SIZE; i++) {
+        for (i = 0; i < BITMAP_SIZE(nr_lines); i++) {
                 pos = __dynamic_array_find_first_zero_bit(bitmap, i);
                 if (pos != INDEX_EMPTY) {
                         return pos;
@@ -158,7 +181,7 @@ static inline size_t dynamic_array_find_first_zero_bit(bitmap_t *bitmap)
  * @return size_t 비트맵의 위치. 못 찾은 경우 INDEX_EMPTY가 반환된다.
  */
 static inline size_t __dynamic_array_find_first_bit(bitmap_t *bitmap,
-                                                    size_t bitmap_idx)
+                                                    const size_t bitmap_idx)
 {
         size_t i, pos;
         if (bitmap[bitmap_idx] == (size_t)(~0UL)) {
@@ -179,12 +202,14 @@ static inline size_t __dynamic_array_find_first_bit(bitmap_t *bitmap,
  * @brief dynamic array의 bitmap에서 최초로 1이 나오는 비트를 반환한다.
  * 
  * @param bitmap 찾고자 하는 비트맵
+ * @param nr_lines struct dynamic_array의 nr_lines 값
  * @return size_t 비트맵의 위치. 못 찾은 경우 INDEX_EMPTY가 반환된다.
  */
-static inline size_t dynamic_array_find_first_bit(bitmap_t *bitmap)
+static inline size_t dynamic_array_find_first_bit(bitmap_t *bitmap,
+                                                  const size_t nr_lines)
 {
         size_t i, pos;
-        for (i = 0; i < BITMAP_SIZE; i++) {
+        for (i = 0; i < BITMAP_SIZE(nr_lines); i++) {
                 pos = __dynamic_array_find_first_bit(bitmap, i);
                 if (pos != INDEX_EMPTY) {
                         return pos;
