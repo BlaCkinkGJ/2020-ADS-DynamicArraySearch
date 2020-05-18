@@ -34,10 +34,34 @@ typedef unsigned long bitmap_t;
 #define BITS_PER_BITMAP (sizeof(bitmap_t) * BITS)
 #define BITMAP_SIZE(nr_lines) (((nr_lines) / BITS_PER_BITMAP) + 1)
 
-#define INDEX_EMPTY ((size_t)(~0UL))
+#define INDEX_EMPTY ((size_t)(~(size_t)0UL))
 
 #define FREE_DISABLE 0
 #define FREE_ENABLE 1
+
+#ifdef TEST
+struct counter {
+        int alloc;
+        int dealloc;
+        int insert;
+        int insert_iter;
+        int search;
+        int search_iter;
+        int compare;
+};
+
+struct counter counter;
+
+#define PRINT_HEADER()                                                         \
+        (printf("alloc\tdealloc\tinsert\titer\tsearch\titer\tcmp\n"))
+
+#define PRINT_COUNTER()                                                        \
+        do {                                                                   \
+                printf("%d\t%d\t%d\t%d\t%d\t%d\t%d\n", counter.alloc,          \
+                       counter.dealloc, counter.search, counter.search_iter,   \
+                       counter.insert, counter.insert_iter, counter.compare);  \
+        } while (0);
+#endif
 
 /**
  * @brief debug용 출력 함수
@@ -67,6 +91,7 @@ typedef unsigned long bitmap_t;
  * 
  */
 struct item {
+        size_t parent_index;
         key_t key; /**< unique한 item을 찾는 값에 해당한다. */
 };
 
@@ -94,8 +119,9 @@ struct dynamic_array {
 };
 
 struct dynamic_array *dynamic_array_init(const size_t nr_lines);
-struct item *dynamic_array_search(struct dynamic_array *array, key_t key);
 int dynamic_array_insert(struct dynamic_array *array, const struct item item);
+struct item *dynamic_array_search(struct dynamic_array *array, const key_t key);
+int dynamic_array_delete(struct dynamic_array *array, const key_t key);
 void dynamic_array_free(struct dynamic_array **_array);
 
 /**

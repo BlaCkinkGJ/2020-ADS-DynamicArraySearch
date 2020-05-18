@@ -42,6 +42,9 @@ static int dynamic_array_line_alloc(struct dynamic_array *array,
         }
 
         dynamic_array_set_bit(array->bitmap, line_index);
+#ifdef TEST
+        counter.alloc++;
+#endif
 
         return 0;
 }
@@ -90,6 +93,9 @@ static int __dynamic_array_line_dealloc(struct dynamic_array *array,
 static int dynamic_array_line_dealloc(struct dynamic_array *array,
                                       size_t line_index)
 {
+#ifdef TEST
+        counter.dealloc++;
+#endif
         return __dynamic_array_line_dealloc(array, line_index, FREE_DISABLE);
 }
 
@@ -105,6 +111,9 @@ static int dynamic_array_compare(const void *left, const void *right)
         struct item *item1 = (struct item *)left;
         struct item *item2 = (struct item *)right;
 
+#ifdef TEST
+        counter.compare++;
+#endif
         if (item1->key < item2->key) {
                 return -1;
         }
@@ -148,6 +157,11 @@ int dynamic_array_insert(struct dynamic_array *array, const struct item item)
                         item_ptr = &next_line->items[next_item_pos++];
                         memcpy(item_ptr, &line->items[item_pos],
                                sizeof(struct item));
+                        line->items[item_pos].parent_index = line_pos;
+                        item_ptr->parent_index = next_pos;
+#ifdef TEST
+                        counter.insert_iter++;
+#endif
                 } // end of line copy
                 dynamic_array_line_dealloc(array, line_pos);
         } // end of previous items copy
@@ -155,6 +169,7 @@ int dynamic_array_insert(struct dynamic_array *array, const struct item item)
         // item copy sequence
         item_ptr = &next_line->items[next_item_pos];
         memcpy(item_ptr, &item, sizeof(struct item));
+        item_ptr->parent_index = next_pos;
 
         qsort(next_line->items, next_line->size, sizeof(struct item),
               dynamic_array_compare);
@@ -165,6 +180,9 @@ int dynamic_array_insert(struct dynamic_array *array, const struct item item)
                 array->size = next_pos + 1;
         }
 ret:
+#ifdef TEST
+        counter.insert++;
+#endif
         return ret;
 }
 
@@ -175,7 +193,7 @@ ret:
  * @param key 탐색의 대상이 되는 key
  * @return struct item* 탐색 결과 위치. 못 찾은 경우 NULL 반환
  */
-static struct item *__dynamic_array_search(struct line *line, key_t key)
+static struct item *__dynamic_array_search(struct line *line, const key_t key)
 {
         struct item *item = NULL;
         size_t low = 0;
@@ -193,7 +211,13 @@ static struct item *__dynamic_array_search(struct line *line, key_t key)
                 } else {
                         low = mid + 1;
                 }
+#ifdef TEST
+                counter.search_iter++;
+#endif
         }
+#ifdef TEST
+        counter.search++;
+#endif
         return NULL;
 }
 
@@ -204,7 +228,7 @@ static struct item *__dynamic_array_search(struct line *line, key_t key)
  * @param key 찾고자하는 키 값
  * @return struct item* key에 해당하는 위치를 반환한다. 못 찾은 경우 NULL 반환 
  */
-struct item *dynamic_array_search(struct dynamic_array *array, key_t key)
+struct item *dynamic_array_search(struct dynamic_array *array, const key_t key)
 {
         size_t i;
         key_t min, max;
@@ -221,6 +245,85 @@ struct item *dynamic_array_search(struct dynamic_array *array, key_t key)
         } // array search
 ret:
         return item;
+}
+
+/**
+ * @brief dynamic array에서 배제한 item을 제외하고, 지우고자 하는 라인의 item을 밑으로 옮기도록 한다.
+ * 
+ * @param array dynamic array의 포인터
+ * @param nitems 삭제하는 아이템의 갯수
+ * @param items 삭제하는 아이템 리스트
+ * @param key 삭제에서 제외하고자 하는 key
+ * @return int delete 성공 여부(0: 성공)
+ */
+int __dynamic_array_delete(struct dynamic_array *array, size_t nitems,
+                           struct item *items, size_t key)
+{
+        size_t index;
+        int ret = 0;
+        for (index = 0; index < nitems; index++) {
+                if (items[index].key != key) {
+                        ret = dynamic_array_insert(array, items[index]);
+                        if (ret) {
+                                goto ret;
+                        }
+                }
+        }
+ret:
+        return ret;
+}
+
+/**
+ * @brief dynamic array에 대해서 delete를 수행하도록 한다.
+ * 
+ * @param array dynamic array를 가리키는 포인터
+ * @param key dynamic array에서 지우고자 하는 키 값
+ * @return int delete 성공 여부(0: 성공)
+ */
+int dynamic_array_delete(struct dynamic_array *array, const key_t key)
+{
+        size_t target_index, erase_index;
+        struct line *line;
+        struct item *items;
+        struct item *target_item = dynamic_array_search(array, key);
+        int ret = 0;
+        if (target_item == NULL) {
+                ret = -ENODATA;
+                goto ret;
+        }
+
+        target_index = target_item->parent_index;
+        erase_index =
+                dynamic_array_find_first_bit(array->bitmap, array->nr_lines);
+
+        line = &array->lines[erase_index];
+        items = array->lines[erase_index].items;
+        if (target_index == erase_index) {
+                ret = __dynamic_array_delete(array, line->size, items, key);
+                if (ret) {
+                        goto ret;
+                }
+                dynamic_array_line_dealloc(array, erase_index);
+                if (erase_index == array->size) {
+                        array->size--;
+                }
+        } else {
+                ret = __dynamic_array_delete(array, line->size, items,
+                                             items[0].key);
+                if (ret) {
+                        goto ret;
+                }
+                memcpy(target_item, &items[0], sizeof(struct item));
+                target_item->parent_index = target_index;
+                dynamic_array_line_dealloc(array, erase_index);
+                line = &array->lines[target_index];
+                qsort(line->items, line->size, sizeof(struct item),
+                      dynamic_array_compare);
+                line->min = line->items[0].key;
+                line->max = line->items[line->size - 1].key;
+        }
+ret:
+        return ret;
 }
 
 /**

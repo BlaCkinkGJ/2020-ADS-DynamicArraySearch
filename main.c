@@ -3,12 +3,28 @@
 #include <string.h>
 #include "dynamic-array.h"
 
+// #define DELETE_TEST
+
+#ifdef DELETE_TEST
+#define SIZE 10
+#endif
+
 int main(void)
 {
         int ret = 0;
-        size_t nr_case = 0, i = 0;
+        size_t nr_case = 0;
+#ifndef DELETE_TEST
+        size_t i = 0;
+#endif
         struct dynamic_array *array = NULL;
-        size_t err = 0, total = 0, array_size = 0;
+#ifndef DELETE_TEST
+        size_t err = 0, total = 0;
+#endif
+        size_t array_size = 0;
+
+#ifdef TEST
+        memset(&counter, 0, sizeof(struct counter));
+#endif
 
         FILE *fp = fopen("test.inp", "r");
 
@@ -19,12 +35,55 @@ int main(void)
         if (array == NULL) {
                 goto exception;
         }
-
         pr_info("dynamic array initialize finished\n");
 
+#ifdef DELETE_TEST
+        for (int i = 0; i < SIZE; i++) {
+                struct item item = { .key = i };
+                dynamic_array_insert(array, item);
+        }
+        pr_info("");
+        for (int i = 0; i < SIZE; i++) {
+                struct item *item = dynamic_array_search(array, i);
+                if (item) {
+                        printf("%d(%d) ", (int)item->key,
+                               (int)item->parent_index);
+                } else {
+                        printf("NULL ");
+                }
+        }
+        printf("\n");
+        for (int j = SIZE - 1; j >= 0; j--) {
+                // for (int j = 0; j < SIZE; j++) {
+                pr_info("");
+                printf("================\n");
+
+                dynamic_array_delete(array, j);
+                pr_info("");
+                for (int i = 0; i < SIZE; i++) {
+                        struct item *item = dynamic_array_search(array, i);
+                        if (item) {
+                                printf("%d(%d) ", (int)item->key,
+                                       (int)item->parent_index);
+                        } else {
+                                printf("NULL ");
+                        }
+                }
+                printf("\n");
+        }
+#else
+
+#ifdef TEST
+        PRINT_HEADER();
+#endif
         for (i = 0; i < nr_case; i++) {
                 char command[256];
                 key_t key;
+#ifdef TEST
+                if (i % 1000 == 0) {
+                        PRINT_COUNTER();
+                }
+#endif
                 fscanf(fp, "%s " KEY_FORMAT, command, &key);
                 if (!strncmp(command, "INSERT", sizeof(command))) {
                         struct item item = { .key = key };
@@ -41,8 +100,12 @@ int main(void)
                         total++;
                 }
         }
+#ifdef TEST
+        PRINT_COUNTER();
+#endif
         pr_info("insert/serach sequence finished (err: %.2f%%)\n",
                 (float)(err * 100.0 / total));
+#endif
 
         dynamic_array_free(&array);
         pr_info("dynamic array free\n");
