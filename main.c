@@ -36,6 +36,11 @@ int main(void)
                 goto exception;
         }
         pr_info("dynamic array initialize finished\n");
+#if defined(TEST) && defined(BIT_COUNTER)
+        counter.size = array->size;
+        counter.bit_set_counter = (int *)calloc(nr_case, sizeof(int));
+        counter.bit_unset_counter = (int *)calloc(nr_case, sizeof(int));
+#endif
 
 #ifdef DELETE_TEST
         for (int i = 0; i < SIZE; i++) {
@@ -80,6 +85,10 @@ int main(void)
                 char command[256];
                 key_t key;
 #ifdef TEST
+#ifdef BIT_COUNTER
+                counter.size =
+                        array->size > counter.size ? array->size : counter.size;
+#endif
                 if (i % 1000 == 0) {
                         PRINT_COUNTER();
                 }
@@ -107,10 +116,15 @@ int main(void)
                 (float)(err * 100.0 / total));
 #endif
 
-        dynamic_array_free(&array);
-        pr_info("dynamic array free\n");
-
 exception:
+#if defined(TEST) && defined(BIT_COUNTER)
+        free(counter.bit_set_counter);
+        free(counter.bit_unset_counter);
+#endif
+        if (array) {
+                dynamic_array_free(&array);
+                pr_info("dynamic array free\n");
+        }
         fclose(fp);
         return ret;
 }

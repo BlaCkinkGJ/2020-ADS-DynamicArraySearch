@@ -39,7 +39,12 @@ typedef unsigned long bitmap_t;
 #define FREE_DISABLE 0
 #define FREE_ENABLE 1
 
+#define TEST
+// #define GENERIC_COUNTER
+#define BIT_COUNTER
+
 #ifdef TEST
+#if defined(GENERIC_COUNTER)
 struct counter {
         int alloc;
         int dealloc;
@@ -49,9 +54,17 @@ struct counter {
         int search_iter;
         int compare;
 };
+#elif defined(BIT_COUNTER)
+struct counter {
+        size_t size;
+        int *bit_set_counter;
+        int *bit_unset_counter;
+};
+#endif
 
 struct counter counter;
 
+#if defined(GENERIC_COUNTER)
 #define PRINT_HEADER()                                                         \
         (printf("alloc\tdealloc\tinsert\titer\tsearch\titer\tcmp\n"))
 
@@ -61,6 +74,23 @@ struct counter counter;
                        counter.dealloc, counter.search, counter.search_iter,   \
                        counter.insert, counter.insert_iter, counter.compare);  \
         } while (0);
+#elif defined(BIT_COUNTER)
+#define PRINT_HEADER() (printf("bits\n"))
+
+static inline void PRINT_COUNTER()
+{
+        printf("set\t");
+        for (int i = 0; i < counter.size; i++) {
+                printf("%d ", counter.bit_set_counter[i]);
+        }
+        printf("\n");
+        printf("unset\t");
+        for (int i = 0; i < counter.size; i++) {
+                printf("%d ", counter.bit_unset_counter[i]);
+        }
+        printf("\n");
+}
+#endif
 #endif
 
 /**

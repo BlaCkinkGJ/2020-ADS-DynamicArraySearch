@@ -42,7 +42,10 @@ static int dynamic_array_line_alloc(struct dynamic_array *array,
         }
 
         dynamic_array_set_bit(array->bitmap, line_index);
-#ifdef TEST
+#if defined(TEST) && defined(BIT_COUNTER)
+        counter.bit_set_counter[line_index]++;
+#endif
+#if defined(TEST) && defined(GENERIC_COUNTER)
         counter.alloc++;
 #endif
 
@@ -77,6 +80,9 @@ static int __dynamic_array_line_dealloc(struct dynamic_array *array,
         line->min = line->max = -1;
 
         dynamic_array_clear_bit(array->bitmap, line_index);
+#if defined(TEST) && defined(BIT_COUNTER)
+        counter.bit_unset_counter[line_index]++;
+#endif
 
         return 0;
 }
@@ -93,7 +99,7 @@ static int __dynamic_array_line_dealloc(struct dynamic_array *array,
 static int dynamic_array_line_dealloc(struct dynamic_array *array,
                                       size_t line_index)
 {
-#ifdef TEST
+#if defined(TEST) && defined(GENERIC_COUNTER)
         counter.dealloc++;
 #endif
         return __dynamic_array_line_dealloc(array, line_index, FREE_DISABLE);
@@ -111,7 +117,7 @@ static int dynamic_array_compare(const void *left, const void *right)
         struct item *item1 = (struct item *)left;
         struct item *item2 = (struct item *)right;
 
-#ifdef TEST
+#if defined(TEST) && defined(GENERIC_COUNTER)
         counter.compare++;
 #endif
         if (item1->key < item2->key) {
@@ -159,7 +165,7 @@ int dynamic_array_insert(struct dynamic_array *array, const struct item item)
                                sizeof(struct item));
                         line->items[item_pos].parent_index = line_pos;
                         item_ptr->parent_index = next_pos;
-#ifdef TEST
+#if defined(TEST) && defined(GENERIC_COUNTER)
                         counter.insert_iter++;
 #endif
                 } // end of line copy
@@ -180,7 +186,7 @@ int dynamic_array_insert(struct dynamic_array *array, const struct item item)
                 array->size = next_pos + 1;
         }
 ret:
-#ifdef TEST
+#if defined(TEST) && defined(GENERIC_COUNTER)
         counter.insert++;
 #endif
         return ret;
@@ -211,11 +217,11 @@ static struct item *__dynamic_array_search(struct line *line, const key_t key)
                 } else {
                         low = mid + 1;
                 }
-#ifdef TEST
+#if defined(TEST) && defined(GENERIC_COUNTER)
                 counter.search_iter++;
 #endif
         }
-#ifdef TEST
+#if defined(TEST) && defined(GENERIC_COUNTER)
         counter.search++;
 #endif
         return NULL;
